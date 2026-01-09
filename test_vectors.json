@@ -1,0 +1,102 @@
+[
+  {
+    "name": "world_id_derivation",
+    "description": "WorldId = BLAKE3(\"world\" || phrase_norm || rule_bundle_hash)",
+    "inputs": {
+      "phrase": "test world alpha",
+      "phrase_normalized": "test-world-alpha",
+      "rule_bundle": {
+        "default_circuit_len": 3,
+        "disagreement_quarantine_threshold": 0.5,
+        "epoch_len_ms": 300000,
+        "exploration_rate": 0.1,
+        "fixed_cell_bytes": 512,
+        "max_probe_redundancy": 10,
+        "min_diverse_probers": 3,
+        "relay_batch_max_delay_ms": 100,
+        "version": 1,
+        "w_latency": 0.3,
+        "w_refusal_consistency": 0.2,
+        "w_robustness": 0.4,
+        "w_success": 1.0,
+        "w_tool_fidelity": 0.5
+      },
+      "rule_bundle_hash_hex": "d13fd49f76d179b1ac758e94810fe7eeeacdbc8cefaa98a1d1f63a3416299db6"
+    },
+    "canonical_bytes_hex": "01e0a7129a9999999999b93f000000000000e03f030a03648004000000000000f03f000000000000e03f333333333333d33f9a9999999999c93f9a9999999999d93f",
+    "hash_hex": "70cbb22d564116181ed26e7b161f0c6449aec7599a60c9a47fbf1ca7287838ce"
+  },
+  {
+    "name": "rule_bundle_hash",
+    "description": "BLAKE3(canonical_bytes(RuleBundle))",
+    "inputs": {
+      "epoch_len_ms": 60000,
+      "exploration_rate": 0.05,
+      "version": 1
+    },
+    "canonical_bytes_hex": "01e0d4039a9999999999a93f333333333333d33f0514033280080000000000000040000000000000f03f000000000000e03f333333333333d33f9a9999999999e93f",
+    "hash_hex": "1adef9ed3551d24c726a27d3dbf634ac09d69d6beb5b28a18dfb920cdb74f9d5"
+  },
+  {
+    "name": "fah_derivation",
+    "description": "FAH = BLAKE3(\"fah\" || canonical_bytes(CapabilityManifest))",
+    "inputs": {
+      "adapters": [
+        {
+          "adapter_digest_hex": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "adapter_id": "coding-v1",
+          "adapter_type": "lora"
+        }
+      ],
+      "base_model_id": "llama-3.3-70b-instruct",
+      "context_limit": 128000,
+      "runtime_id": "vllm",
+      "weights_digest_hex": "0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20"
+    },
+    "canonical_bytes_hex": "166c6c616d612d332e332d3730622d696e73747275637401020304050607080a0b0c0d0e0f101112131415161718191a1b1c1d1e1f2004766c6c6d80e807aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa087374616e6461726401046c6f726109636f64696e672d7631bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "hash_hex": "eb1a989107ebc26274d203f0f0ba48323db1c70739021b60de4441d6b28c4269"
+  },
+  {
+    "name": "descriptor_id_derivation",
+    "description": "DescriptorId = BLAKE3(\"descriptor\" || canonical_bytes(ProviderDescriptorUnsigned))",
+    "inputs": {
+      "capability": {
+        "fah_hex": "5555555555555555555555555555555555555555555555555555555555555555",
+        "type": "fah"
+      },
+      "contact_points": [
+        "/dns4/node1.example.com/tcp/9000",
+        "/ip4/192.168.1.1/tcp/9000"
+      ],
+      "descriptor_epoch": 100,
+      "world_hex": "4242424242424242424242424242424242424242424242424242424242424242"
+    },
+    "canonical_bytes_hex": "42424242424242424242424242424242424242424242424242424242424242426402202f646e73342f6e6f6465312e6578616d706c652e636f6d2f7463702f39303030192f6970342f3139322e3136382e312e312f7463702f39303030005555555555555555555555555555555555555555555555555555555555555555",
+    "hash_hex": "d58d49b28d518d908cc43a369f77747a2831de4e0b4112541d37a933b44d047c"
+  },
+  {
+    "name": "target_ref_derivation",
+    "description": "TargetRef = BLAKE3_KEYED(cpk, \"targetref\" || WorldId || epoch_id || DescriptorId)",
+    "inputs": {
+      "control_plane_key_hex": "d7b4fdeb102ca9dc5d6300180e55942f560ce6e6f8ed73225d61ab3d2926fffc",
+      "descriptor_id_hex": "3333333333333333333333333333333333333333333333333333333333333333",
+      "epoch_id": 42,
+      "master_key_hex": "1111111111111111111111111111111111111111111111111111111111111111",
+      "world_id_hex": "2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    "canonical_bytes_hex": "",
+    "hash_hex": "87027991b839908f158a432300d836265b3e6abb471afc4da4e538573ceba0fc"
+  },
+  {
+    "name": "terrain_address_canonical",
+    "description": "Canonical bytes for TerrainAddress",
+    "inputs": {
+      "cell_id": 42,
+      "chunk_id": 11111,
+      "epoch_id": 12345,
+      "region_id": 67890
+    },
+    "canonical_bytes_hex": "b960b29204e7562a",
+    "hash_hex": "2c8477476db9711c817980a5bc94b6fe81e3031d6b7a498d07d9fed25b53236c"
+  }
+]

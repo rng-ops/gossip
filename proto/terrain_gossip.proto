@@ -1,0 +1,386 @@
+// TerrainGossip Protocol Messages (RFC-0001 §11)
+//
+// This is the normative wire schema for interchange.
+// Canonical bytes for hashing/signing MUST follow the Rust reference implementation.
+//
+// NOTE: Protobuf decoding MUST NOT be hashed/signed directly.
+// Implementations MUST decode → construct native struct → re-encode canonically → hash/sign.
+
+syntax = "proto3";
+package terraingossip.v1;
+
+// =============================================================================
+// PRIMITIVE WRAPPERS
+// =============================================================================
+
+message Bytes32 { bytes v = 1; }
+message Bytes64 { bytes v = 1; }
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum FreshnessStrength {
+  FRESH_NONE = 0;
+  FRESH_WEAK = 1;
+  FRESH_STRONG = 2;
+}
+
+enum EventType {
+  EVENT_UNSPECIFIED = 0;
+  EVENT_RECEIPT = 1;
+  EVENT_ATTESTATION = 2;
+  EVENT_DISPUTE = 3;
+  EVENT_LINK_HINT = 4;
+  EVENT_RULE_ENDORSEMENT = 5;
+  EVENT_SHARD = 6;
+  EVENT_VERDICT = 7;
+  EVENT_TRAINING_MANIFEST = 8;
+  EVENT_DESCRIPTOR_PUBLISH = 9;
+}
+
+// =============================================================================
+// IDENTITY TYPES
+// =============================================================================
+
+message WorldId { Bytes32 id = 1; }
+message FAH { Bytes32 h = 1; }
+message Handle { Bytes32 h = 1; }  // Observer-local only, never in gossip
+message TargetRef { Bytes32 h = 1; }  // Control-plane, provider-blind
+message BAH { Bytes32 h = 1; }
+message ChallengeId { Bytes32 h = 1; }
+message ReceiptId { Bytes32 h = 1; }
+message AttestationId { Bytes32 h = 1; }
+message EventId { Bytes32 h = 1; }
+message DescriptorId { Bytes32 h = 1; }
+
+// =============================================================================
+// RULE BUNDLE
+// =============================================================================
+
+message RuleBundle {
+  uint32 version = 1;
+  uint64 epoch_len_ms = 2;
+  double exploration_rate = 3;
+  double disagreement_quarantine_threshold = 4;
+  uint32 min_diverse_probers = 5;
+  uint32 max_probe_redundancy = 6;
+  // Mixing defaults
+  uint32 default_circuit_len = 7;
+  uint32 relay_batch_max_delay_ms = 8;
+  uint32 fixed_cell_bytes = 9;
+  // Metrics weights (field numbers 20+ for extensibility)
+  double w_success = 20;
+  double w_tool_fidelity = 21;
+  double w_latency = 22;
+  double w_refusal_consistency = 23;
+  double w_robustness = 24;
+}
+
+// =============================================================================
+// TERRAIN ADDRESS
+// =============================================================================
+
+message TerrainAddress {
+  uint64 epoch_id = 1;
+  uint64 region_id = 2;
+  uint64 chunk_id = 3;
+  uint32 cell_id = 4;
+}
+
+// =============================================================================
+// CAPABILITY MANIFEST
+// =============================================================================
+
+message CapabilityManifest {
+  string base_model_id = 1;
+  Bytes32 weights_digest = 2;
+  string runtime_id = 3;
+  uint32 context_limit = 4;
+  Bytes32 tool_schemas_digest = 5;
+  string safety_mode = 6;
+  // MUST be sorted by (adapter_type, adapter_id, adapter_digest) before hashing
+  repeated Adapter adapters = 7;
+
+  message Adapter {
+    string adapter_id = 1;
+    Bytes32 adapter_digest = 2;
+    string adapter_type = 3;
+  }
+}
+
+// =============================================================================
+// PROBE TICKET
+// =============================================================================
+
+message ProbeTicket {
+  bytes ticket_bytes = 1;
+  uint32 params_n = 2;
+  uint32 params_r = 3;
+  uint32 params_p = 4;
+}
+
+// =============================================================================
+// COMMITMENTS
+// =============================================================================
+
+message OutcomeCommitment { Bytes32 h = 1; }
+message EvidenceCommitment { Bytes32 h = 1; }
+
+// =============================================================================
+// METRICS VECTOR
+// =============================================================================
+
+message MetricsVector {
+  double success_rate = 1;
+  double refusal_consistency = 2;
+  double tool_fidelity = 3;
+  uint32 latency_p50_ms = 4;
+  uint32 latency_p95_ms = 5;
+  double robustness_score = 6;
+  double drift_indicator = 7;
+  FreshnessStrength freshness = 8;
+}
+
+// =============================================================================
+// PROBE RECEIPT
+// =============================================================================
+
+message ProbeReceipt {
+  ReceiptId receipt_id = 1;  // MUST equal computed hash
+  WorldId world = 2;
+  uint64 epoch_id = 3;
+  ChallengeId challenge_id = 4;
+  TargetRef target_ref = 5;
+  optional FAH target_fah = 6;
+  OutcomeCommitment outcome_commitment = 7;
+  optional ProbeTicket ticket = 8;
+  bytes prober_transport_pubkey = 9;
+  bytes signature = 10;
+}
+
+// =============================================================================
+// BEHAVIOR ATTESTATION
+// =============================================================================
+
+message BehaviorAttestation {
+  AttestationId attestation_id = 1;  // MUST equal computed hash
+  WorldId world = 2;
+  uint64 epoch_id = 3;
+  ChallengeId challenge_id = 4;
+  TargetRef target_ref = 5;
+  optional FAH target_fah = 6;
+  MetricsVector metrics = 7;
+  EvidenceCommitment evidence_commitment = 8;
+  optional bytes freshness_anchor = 9;
+  bytes prober_transport_pubkey = 10;
+  bytes signature = 11;
+}
+
+// =============================================================================
+// DISPUTE EVENT
+// =============================================================================
+
+message DisputeEvent {
+  WorldId world = 1;
+  uint64 epoch_id = 2;
+  EventId a = 3;
+  EventId b = 4;
+  string reason = 5;
+  bytes disputer_transport_pubkey = 6;
+  bytes signature = 7;
+}
+
+// =============================================================================
+// LINK HINT EVENT
+// =============================================================================
+
+message LinkHintEvent {
+  WorldId world = 1;
+  uint64 epoch_id = 2;
+  // Statistical evidence that two TargetRefs are same provider
+  TargetRef a = 3;
+  TargetRef b = 4;
+  EvidenceCommitment evidence_commitment = 5;
+  double compatibility_score = 6;
+  bytes signer_transport_pubkey = 7;
+  bytes signature = 8;
+}
+
+// =============================================================================
+// PROVIDER DESCRIPTOR
+// =============================================================================
+
+// Unsigned content (hashed to produce DescriptorId)
+message ProviderDescriptorUnsigned {
+  WorldId world = 1;
+  uint64 descriptor_epoch = 2;
+  // MUST be sorted lexicographically and deduped
+  repeated string contact_points = 3;
+  oneof capability {
+    FAH fah = 4;
+    CapabilityManifest capability_manifest = 5;
+  }
+}
+
+// Signed wrapper (descriptor_id MUST equal computed hash of unsigned)
+message ProviderDescriptor {
+  DescriptorId descriptor_id = 1;  // = BLAKE3("descriptor" || canonical_bytes(unsigned))
+  ProviderDescriptorUnsigned unsigned = 2;
+  bytes provider_transport_pubkey = 3;
+  bytes signature = 4;  // Ed25519 over ("desc-sig" || world_id || descriptor_id || canonical_bytes(unsigned))
+}
+
+// Validity from descriptor signature; no additional event-level signature required
+message DescriptorPublishEvent {
+  WorldId world = 1;
+  uint64 epoch_id = 2;
+  ProviderDescriptor descriptor = 3;
+}
+
+// =============================================================================
+// RULE ENDORSEMENT EVENT
+// =============================================================================
+
+message RuleEndorsementEvent {
+  WorldId world = 1;
+  uint64 epoch_id = 2;
+  Bytes32 rule_bundle_hash = 3;
+  double weight = 4;
+  bytes signer_transport_pubkey = 5;
+  bytes signature = 6;
+}
+
+// =============================================================================
+// TRAINING (OPTIONAL PLUGIN)
+// =============================================================================
+
+message TrainingDataShard {
+  Bytes32 shard_id = 1;  // = BLAKE3(canonical_bytes(shard))
+  string source_type = 2;
+  bytes redacted_payload = 3;
+  Bytes32 payload_digest = 4;
+  bytes curator_transport_pubkey = 5;
+  bytes signature = 6;
+}
+
+message VerdictEvent {
+  WorldId world = 1;
+  uint64 epoch_id = 2;
+  Bytes32 shard_id = 3;
+  string verdict = 4;  // "accept"/"reject"/"quarantine"
+  repeated string reasons = 5;
+  bytes verifier_transport_pubkey = 6;
+  bytes signature = 7;
+}
+
+message TrainingManifest {
+  Bytes32 manifest_id = 1;
+  string base_model_id = 2;
+  Bytes32 model_artifact_digest = 3;
+  repeated Bytes32 shard_ids = 4;  // MUST be sorted
+  string method = 5;  // "lora"/"qlora"/etc
+  bytes eval_report_digest = 6;
+  bytes trainer_transport_pubkey = 7;
+  bytes signature = 8;
+}
+
+// =============================================================================
+// EVENT WRAPPER
+// =============================================================================
+
+message Event {
+  EventId event_id = 1;  // MUST equal computed hash
+  EventType type = 2;
+  oneof body {
+    ProbeReceipt receipt = 10;
+    BehaviorAttestation attestation = 11;
+    DisputeEvent dispute = 12;
+    LinkHintEvent link_hint = 13;
+    RuleEndorsementEvent rule_endorsement = 14;
+    TrainingDataShard shard = 15;
+    VerdictEvent verdict = 16;
+    TrainingManifest training_manifest = 17;
+    DescriptorPublishEvent descriptor_publish = 18;
+  }
+}
+
+// =============================================================================
+// DELTA SYNC
+// =============================================================================
+
+message VersionVectorEntry {
+  // Rotating: BLAKE3("replica" || transport_pubkey || world_id || epoch_id)
+  Bytes32 replica_id = 1;
+  uint64 counter = 2;
+}
+
+message DeltaSyncRequest {
+  WorldId world = 1;
+  repeated VersionVectorEntry since = 2;
+  uint32 max_events = 3;
+}
+
+message DeltaSyncResponse {
+  WorldId world = 1;
+  repeated Event events = 2;
+  repeated VersionVectorEntry now = 3;
+}
+
+// =============================================================================
+// SEMANTIC QUERY
+// =============================================================================
+
+message SemanticQuery {
+  WorldId world = 1;
+  bytes embedding = 2;
+  uint32 top_k = 3;
+  optional string filter_type = 4;
+}
+
+message SemanticQueryResult {
+  repeated EventId event_ids = 1;
+}
+
+// =============================================================================
+// CIRCUIT / ONION (Inference Plane)
+// =============================================================================
+
+message CircuitCreate {
+  uint64 circuit_id = 1;
+  bytes entry_ephemeral_pubkey = 2;  // X25519
+  uint32 desired_hops = 3;
+}
+
+message CircuitExtend {
+  uint64 circuit_id = 1;
+  oneof next_hop {
+    DescriptorId next_hop_descriptor_id = 2;
+    ProviderDescriptor next_hop_descriptor_inline = 5;
+  }
+  bytes hop_ephemeral_pubkey = 3;  // X25519
+}
+
+// Control-plane RPC to fetch descriptor by ID
+message GetDescriptorRequest {
+  WorldId world = 1;
+  DescriptorId descriptor_id = 2;
+}
+
+message GetDescriptorResponse {
+  ProviderDescriptor descriptor = 1;  // absent if not found
+}
+
+// AEAD encrypted cell
+// associated_data = (world_id || circuit_id || seq)
+// ciphertext includes AEAD tag
+message OnionCell {
+  uint64 circuit_id = 1;
+  uint64 seq = 2;
+  bytes ciphertext = 3;  // fixed size if RuleBundle.fixed_cell_bytes > 0
+}
+
+message CircuitDestroy {
+  uint64 circuit_id = 1;
+  string reason = 2;
+}
