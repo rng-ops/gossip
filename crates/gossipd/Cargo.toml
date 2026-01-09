@@ -1,0 +1,30 @@
+[package]
+name = "gossipd"
+description = "TerrainGossip event log and delta sync daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "gossipd"
+path = "src/main.rs"
+
+[dependencies]
+terrain-gossip-core = { workspace = true }
+terrain-gossip-net = { workspace = true }
+serde = { workspace = true }
+postcard = { workspace = true }
+blake3 = { workspace = true }
+ed25519-dalek = { workspace = true }
+rand = { workspace = true }
+tokio = { workspace = true }
+sled = { workspace = true }
+parking_lot = { workspace = true }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

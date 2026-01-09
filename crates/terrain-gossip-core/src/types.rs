@@ -280,11 +280,18 @@ pub enum EventBody {
     // Shard, Verdict, TrainingManifest omitted (optional plugin)
 }
 
-/// Top-level event wrapper
+/// Top-level event wrapper (gossip-plane event)
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Event {
+    /// Unique event identifier
     pub event_id: EventId,
+    /// World this event belongs to
+    pub world: WorldId,
+    /// Epoch at which event was created
+    pub epoch_id: u64,
+    /// Event type discriminator
     pub event_type: EventType,
+    /// Event payload
     pub body: EventBody,
 }
 

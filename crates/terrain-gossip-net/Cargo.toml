@@ -1,0 +1,31 @@
+[package]
+name = "terrain-gossip-net"
+description = "Networking primitives for TerrainGossip protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+terrain-gossip-core = { workspace = true }
+serde = { workspace = true }
+postcard = { workspace = true }
+blake3 = { workspace = true }
+ed25519-dalek = { workspace = true }
+x25519-dalek = { workspace = true }
+chacha20poly1305 = { workspace = true }
+hkdf = { workspace = true }
+sha2 = { workspace = true }
+rand = { workspace = true }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+bytes = "1.5"
+quinn = { workspace = true }
+rustls = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+parking_lot = { workspace = true }
+hex = { workspace = true }
+
+[dev-dependencies]
+tempfile = { workspace = true }

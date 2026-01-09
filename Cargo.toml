@@ -2,16 +2,25 @@
 resolver = "2"
 members = [
     "crates/terrain-gossip-core",
+    "crates/terrain-gossip-net",
+    "crates/gossipd",
+    "crates/routerd",
+    "crates/prober",
+    "crates/infernode",
 ]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/your-org/gossip"
+repository = "https://github.com/rng-ops/gossip"
 rust-version = "1.75"
 
 [workspace.dependencies]
+# Core
+terrain-gossip-core = { path = "crates/terrain-gossip-core" }
+terrain-gossip-net = { path = "crates/terrain-gossip-net" }
+
 # Serialization
 serde = { version = "1.0", features = ["derive"] }
 postcard = { version = "1.0", features = ["alloc"] }
@@ -20,10 +29,27 @@ postcard = { version = "1.0", features = ["alloc"] }
 blake3 = "1.5"
 ed25519-dalek = { version = "2.1", features = ["serde", "rand_core"] }
 x25519-dalek = { version = "2.0", features = ["serde"] }
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
 rand = "0.8"
 
-# Async runtime (for future daemons)
+# Async runtime
 tokio = { version = "1.35", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# Networking
+quinn = "0.11"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+
+# Storage
+sled = "0.34"
+parking_lot = "0.12"
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 # Error handling
 thiserror = "1.0"
@@ -32,3 +58,4 @@ anyhow = "1.0"
 # Testing
 hex = "0.4"
 serde_json = "1.0"
+tempfile = "3.10"
