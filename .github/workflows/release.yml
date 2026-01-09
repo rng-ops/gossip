@@ -7,6 +7,8 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/terraingossip
 
 jobs:
   build-linux:
@@ -94,9 +96,67 @@ jobs:
           name: terrain-gossip-macos-arm64
           path: terrain-gossip-macos-arm64.tar.gz
 
+  # ===========================================================================
+  # Build and push Docker images for release
+  # ===========================================================================
+  docker:
+    name: Docker Images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        image:
+          - name: gossipd
+            target: gossipd
+          - name: routerd
+            target: routerd
+          - name: prober
+            target: prober
+          - name: infernode
+            target: infernode
+          - name: all
+            target: all
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.image.name }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          target: ${{ matrix.image.target }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
   release:
     name: Create Release
-    needs: [build-linux, build-macos, build-macos-arm]
+    needs: [build-linux, build-macos, build-macos-arm, docker]
     runs-on: ubuntu-latest
     permissions:
       contents: write

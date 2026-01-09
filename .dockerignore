@@ -1,0 +1,49 @@
+# Build artifacts
+target/
+dist/
+
+# Dependencies (will be fetched in container)
+node_modules/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation (not needed for build)
+docs/
+*.md
+!README.md
+
+# Test artifacts
+*.log
+coverage/
+.nyc_output/
+
+# Docker files (prevent recursive copy)
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+
+# Local config
+.env
+.env.*
+*.local
+
+# Temporary files
+tmp/
+temp/
+*.tmp

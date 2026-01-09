@@ -121,17 +121,64 @@ release VERSION:
 
 # Build Docker images
 docker-build:
-    docker build -t terrain-gossip/gossipd -f docker/gossipd.Dockerfile .
-    docker build -t terrain-gossip/routerd -f docker/routerd.Dockerfile .
-    docker build -t terrain-gossip/prober -f docker/prober.Dockerfile .
-    docker build -t terrain-gossip/infernode -f docker/infernode.Dockerfile .
+    docker compose build
+
+# Build specific Docker image
+docker-build-image TARGET:
+    docker build --target {{TARGET}} -t terraingossip/{{TARGET}}:latest .
+
+# Push Docker images to registry
+docker-push:
+    docker compose push
 
 # Run local test network
 testnet-up:
     @echo "Starting local test network..."
-    @echo "TODO: Implement docker-compose based testnet"
+    docker compose up -d
+
+# Run full network with multiple probers
+testnet-up-full:
+    @echo "Starting full test network with multiple probers..."
+    docker compose --profile scaled up -d
 
 # Stop local test network
 testnet-down:
     @echo "Stopping local test network..."
-    @echo "TODO: Implement docker-compose based testnet"
+    docker compose down
+
+# Stop and clean up volumes
+testnet-clean:
+    @echo "Stopping and cleaning local test network..."
+    docker compose down -v
+
+# View logs
+testnet-logs *ARGS:
+    docker compose logs {{ARGS}}
+
+# Follow logs
+testnet-follow:
+    docker compose logs -f
+
+# Run tests in Docker
+docker-test:
+    docker compose -f docker-compose.test.yml run --rm test-rust
+
+# Run TypeScript tests in Docker
+docker-test-ts:
+    docker compose -f docker-compose.test.yml run --rm test-typescript
+
+# Run linter in Docker
+docker-lint:
+    docker compose -f docker-compose.test.yml run --rm lint-rust
+
+# Run integration tests
+docker-integration:
+    docker compose -f docker-compose.test.yml up --abort-on-container-exit integration-test
+
+# Shell into a running container
+docker-exec SERVICE:
+    docker compose exec {{SERVICE}} /bin/bash
+
+# Show running services
+docker-ps:
+    docker compose ps

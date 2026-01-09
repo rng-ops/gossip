@@ -1,0 +1,67 @@
+# Development override for docker-compose
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# This enables:
+#   - Debug logging
+#   - Source code mounting for hot reload
+#   - Exposed debug ports
+#   - Test service
+
+services:
+  gossipd:
+    environment:
+      RUST_LOG: debug,gossipd=trace
+      RUST_BACKTRACE: full
+    volumes:
+      - ./crates/gossipd:/src/gossipd:ro
+      - gossipd-data:/home/gossip/data
+
+  routerd:
+    environment:
+      RUST_LOG: debug,routerd=trace
+      RUST_BACKTRACE: full
+    volumes:
+      - ./crates/routerd:/src/routerd:ro
+
+  prober:
+    environment:
+      RUST_LOG: debug,prober=trace
+      RUST_BACKTRACE: full
+    volumes:
+      - ./crates/prober:/src/prober:ro
+      - prober-data:/home/gossip/data
+
+  infernode:
+    environment:
+      RUST_LOG: debug,infernode=trace
+      RUST_BACKTRACE: full
+    volumes:
+      - ./crates/infernode:/src/infernode:ro
+
+  # ===========================================================================
+  # Test runner service
+  # ===========================================================================
+  test:
+    build:
+      context: .
+      target: builder
+    image: terraingossip/test:${TAG:-latest}
+    container_name: gossip-test
+    profiles:
+      - test
+    environment:
+      RUST_LOG: debug
+      RUST_BACKTRACE: 1
+    command: cargo test --workspace
+    volumes:
+      - .:/build:ro
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/build/target
+    networks:
+      - gossip-net
+
+volumes:
+  cargo-cache:
+  target-cache:

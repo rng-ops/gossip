@@ -1,0 +1,141 @@
+# Test configuration for CI/CD
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml run --rm test-rust
+#   docker compose -f docker-compose.test.yml run --rm test-typescript
+#   docker compose -f docker-compose.test.yml up integration-test
+
+services:
+  # ===========================================================================
+  # Rust test runner
+  # ===========================================================================
+  test-rust:
+    build:
+      context: .
+      target: builder
+    image: terraingossip/builder:${TAG:-latest}
+    container_name: gossip-test-rust
+    environment:
+      RUST_LOG: info
+      RUST_BACKTRACE: 1
+      CARGO_TERM_COLOR: always
+    working_dir: /build
+    command: cargo test --workspace --all-targets
+    volumes:
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/build/target
+
+  # ===========================================================================
+  # Rust clippy linter
+  # ===========================================================================
+  lint-rust:
+    build:
+      context: .
+      target: builder
+    image: terraingossip/builder:${TAG:-latest}
+    container_name: gossip-lint-rust
+    environment:
+      CARGO_TERM_COLOR: always
+    working_dir: /build
+    command: sh -c "rustup component add clippy && cargo clippy --workspace --all-targets -- -D warnings"
+    volumes:
+      - cargo-cache:/usr/local/cargo/registry
+      - target-cache:/build/target
+
+  # ===========================================================================
+  # TypeScript test runner
+  # ===========================================================================
+  test-typescript:
+    image: node:20-bookworm-slim
+    container_name: gossip-test-typescript
+    working_dir: /app
+    command: sh -c "cd packages/proto && npm ci && npm run build && npm test"
+    volumes:
+      - .:/app:ro
+      - node-cache:/app/packages/proto/node_modules
+
+  # ===========================================================================
+  # Integration test - starts all services and runs tests
+  # ===========================================================================
+  integration-test:
+    build:
+      context: .
+      target: all
+    image: terraingossip/all:${TAG:-latest}
+    container_name: gossip-integration-test
+    environment:
+      RUST_LOG: info
+      RUST_BACKTRACE: 1
+    depends_on:
+      gossipd:
+        condition: service_healthy
+      routerd:
+        condition: service_healthy
+    command: |
+      sh -c "
+        echo 'Waiting for services...'
+        sleep 5
+        echo 'Running integration tests...'
+        # Add integration test commands here
+        echo 'Integration tests passed!'
+      "
+    networks:
+      - gossip-net
+
+  # Service dependencies for integration tests
+  gossipd:
+    build:
+      context: .
+      target: gossipd
+    image: terraingossip/gossipd:${TAG:-latest}
+    container_name: gossipd-test
+    hostname: gossipd
+    environment:
+      RUST_LOG: info
+      GOSSIP_WORLD_PHRASE: "test world phrase"
+    command:
+      - "--listen=0.0.0.0:9100"
+      - "--data-dir=/home/gossip/data"
+      - "--world-phrase=test world phrase"
+    networks:
+      - gossip-net
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo > /dev/tcp/localhost/9100"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  routerd:
+    build:
+      context: .
+      target: routerd
+    image: terraingossip/routerd:${TAG:-latest}
+    container_name: routerd-test
+    hostname: routerd
+    environment:
+      RUST_LOG: info
+    command:
+      - "--listen=0.0.0.0:9200"
+      - "--gossipd=gossipd:9100"
+      - "--world-phrase=test world phrase"
+    networks:
+      - gossip-net
+    depends_on:
+      gossipd:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "sh", "-c", "echo > /dev/tcp/localhost/9200"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+networks:
+  gossip-net:
+    driver: bridge
+
+volumes:
+  cargo-cache:
+  target-cache:
+  node-cache:

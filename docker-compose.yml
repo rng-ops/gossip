@@ -1,0 +1,213 @@
+# TerrainGossip Docker Compose Configuration
+# 
+# Usage:
+#   docker compose up -d              # Start all services
+#   docker compose up -d gossipd      # Start only gossipd
+#   docker compose logs -f            # Follow logs
+#   docker compose down               # Stop all services
+#
+# Development:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# Testing:
+#   docker compose run --rm test
+
+x-common-env: &common-env
+  RUST_LOG: info
+  RUST_BACKTRACE: 1
+
+x-healthcheck-defaults: &healthcheck-defaults
+  interval: 30s
+  timeout: 10s
+  retries: 3
+  start_period: 10s
+
+services:
+  # ===========================================================================
+  # gossipd - Event log and delta sync daemon
+  # ===========================================================================
+  gossipd:
+    build:
+      context: .
+      target: gossipd
+    image: terraingossip/gossipd:${TAG:-latest}
+    container_name: gossipd
+    hostname: gossipd
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      GOSSIP_WORLD_PHRASE: "cable lantern kiwi"
+    command:
+      - "--listen=0.0.0.0:9100"
+      - "--data-dir=/home/gossip/data"
+      - "--world-phrase=cable lantern kiwi"
+    ports:
+      - "9100:9100"
+    volumes:
+      - gossipd-data:/home/gossip/data
+    networks:
+      - gossip-net
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "sh", "-c", "echo > /dev/tcp/localhost/9100"]
+
+  # ===========================================================================
+  # routerd - Terrain routing daemon
+  # ===========================================================================
+  routerd:
+    build:
+      context: .
+      target: routerd
+    image: terraingossip/routerd:${TAG:-latest}
+    container_name: routerd
+    hostname: routerd
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    command:
+      - "--listen=0.0.0.0:9200"
+      - "--gossipd=gossipd:9100"
+      - "--world-phrase=cable lantern kiwi"
+    ports:
+      - "9200:9200"
+    networks:
+      - gossip-net
+    depends_on:
+      gossipd:
+        condition: service_started
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "sh", "-c", "echo > /dev/tcp/localhost/9200"]
+
+  # ===========================================================================
+  # prober - Probe scheduling daemon
+  # ===========================================================================
+  prober:
+    build:
+      context: .
+      target: prober
+    image: terraingossip/prober:${TAG:-latest}
+    container_name: prober
+    hostname: prober
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      TERRAIN_WORLD_PHRASE: "cable lantern kiwi"
+    command:
+      - "--gossipd=gossipd:9100"
+      - "--routerd=routerd:9200"
+      - "--data-dir=/home/gossip/data"
+      - "--world-phrase=cable lantern kiwi"
+    volumes:
+      - prober-data:/home/gossip/data
+    networks:
+      - gossip-net
+    depends_on:
+      gossipd:
+        condition: service_started
+      routerd:
+        condition: service_started
+
+  # ===========================================================================
+  # infernode - Inference relay daemon
+  # ===========================================================================
+  infernode:
+    build:
+      context: .
+      target: infernode
+    image: terraingossip/infernode:${TAG:-latest}
+    container_name: infernode
+    hostname: infernode
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+      TERRAIN_WORLD_PHRASE: "cable lantern kiwi"
+    command:
+      - "--listen=0.0.0.0:9400"
+      - "--gossipd=gossipd:9100"
+      - "--routerd=routerd:9200"
+      - "--world-phrase=cable lantern kiwi"
+      - "--enable-relay"
+    ports:
+      - "9400:9400"
+    networks:
+      - gossip-net
+    depends_on:
+      gossipd:
+        condition: service_started
+      routerd:
+        condition: service_started
+    healthcheck:
+      <<: *healthcheck-defaults
+      test: ["CMD", "sh", "-c", "echo > /dev/tcp/localhost/9400"]
+
+  # ===========================================================================
+  # Additional probers for redundancy (scaled)
+  # ===========================================================================
+  prober-2:
+    build:
+      context: .
+      target: prober
+    image: terraingossip/prober:${TAG:-latest}
+    container_name: prober-2
+    hostname: prober-2
+    restart: unless-stopped
+    profiles:
+      - full
+      - scaled
+    environment:
+      <<: *common-env
+      TERRAIN_WORLD_PHRASE: "cable lantern kiwi"
+    command:
+      - "--gossipd=gossipd:9100"
+      - "--routerd=routerd:9200"
+      - "--data-dir=/home/gossip/data"
+      - "--world-phrase=cable lantern kiwi"
+    volumes:
+      - prober-2-data:/home/gossip/data
+    networks:
+      - gossip-net
+    depends_on:
+      gossipd:
+        condition: service_started
+      routerd:
+        condition: service_started
+
+  prober-3:
+    build:
+      context: .
+      target: prober
+    image: terraingossip/prober:${TAG:-latest}
+    container_name: prober-3
+    hostname: prober-3
+    restart: unless-stopped
+    profiles:
+      - full
+      - scaled
+    environment:
+      <<: *common-env
+      TERRAIN_WORLD_PHRASE: "cable lantern kiwi"
+    command:
+      - "--gossipd=gossipd:9100"
+      - "--routerd=routerd:9200"
+      - "--data-dir=/home/gossip/data"
+      - "--world-phrase=cable lantern kiwi"
+    volumes:
+      - prober-3-data:/home/gossip/data
+    networks:
+      - gossip-net
+    depends_on:
+      gossipd:
+        condition: service_started
+      routerd:
+        condition: service_started
+
+networks:
+  gossip-net:
+    driver: bridge
+
+volumes:
+  gossipd-data:
+  prober-data:
+  prober-2-data:
+  prober-3-data:
